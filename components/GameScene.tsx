@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useRef, useState, useMemo, useEffect } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Grid, PerspectiveCamera, Stars } from "@react-three/drei";
@@ -37,6 +32,7 @@ interface GameSceneProps {
   onNoteMiss: (note: NoteData) => void;
   onSongEnd: () => void;
   multiplier: number;
+  restartSignal?: number;
 }
 
 const GameScene: React.FC<GameSceneProps> = ({
@@ -48,6 +44,7 @@ const GameScene: React.FC<GameSceneProps> = ({
   onNoteMiss,
   onSongEnd,
   multiplier,
+  restartSignal,
 }) => {
   const [notesState, setNotesState] = useState<NoteData[]>(chart);
   const [currentTime, setCurrentTime] = useState(0);
@@ -91,7 +88,8 @@ const GameScene: React.FC<GameSceneProps> = ({
     setNotesState(chart);
     activeNotesRef.current = [];
     nextNoteIndexRef.current = 0;
-  }, [chart]);
+    setCurrentTime(0);
+  }, [chart, restartSignal]);
 
   const handleHit = (
     note: NoteData,
@@ -386,7 +384,7 @@ const GameScene: React.FC<GameSceneProps> = ({
 
       {visibleNotes.map((note) => (
         <Note
-          key={note.id}
+          key={note.id + "-" + note.time} // key'i unique yap
           data={note}
           zPos={PLAYER_Z - (note.time - currentTime) * NOTE_SPEED}
           currentTime={currentTime}

@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -18,58 +13,57 @@ interface BeatEqualizerProps {
 
 const BeatEqualizer: React.FC<BeatEqualizerProps> = ({ audioRef }) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
-  const dummy = useMemo(() => new THREE.Object3D(), []);
 
-  // Create static positions
+  // Reuse dummy object and color
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const color = useMemo(() => new THREE.Color(), []);
+
   const positions = useMemo(() => {
     const pos: { x: number; z: number; offset: number }[] = [];
-    // Left side
     for (let i = 0; i < BAR_COUNT_PER_SIDE; i++) {
       pos.push({ x: -4, z: START_Z - i * SPACING, offset: i * 0.5 });
     }
-    // Right side
     for (let i = 0; i < BAR_COUNT_PER_SIDE; i++) {
       pos.push({ x: 4, z: START_Z - i * SPACING, offset: i * 0.5 });
     }
     return pos;
   }, []);
 
-  useFrame((state) => {
+  useFrame(() => {
     if (!meshRef.current || !audioRef.current) return;
 
     const time = audioRef.current.currentTime;
     const beatPhase = (time % BEAT_TIME) / BEAT_TIME;
-    // Basic pulse
     const pulse = Math.pow(1 - beatPhase, 3);
 
+    const instanceMatrix = meshRef.current.instanceMatrix;
+    const instanceColor = meshRef.current.instanceColor;
+
     positions.forEach((p, i) => {
-      // Calculate height based on pulse + wave offset
-      // We create a wave that travels down the track
       const wave = Math.sin(time * 4 - p.offset);
       const height = 0.5 + pulse * 2 * Math.max(0, wave) + 0.2;
 
       dummy.position.set(p.x, height / 2, p.z);
       dummy.scale.set(0.5, height, 0.5);
-      dummy.rotation.set(0, 0, 0);
-
       dummy.updateMatrix();
-      meshRef.current!.setMatrixAt(i, dummy.matrix);
+      instanceMatrix.set(i, dummy.matrix);
 
-      // Color gradient based on height
-      const color = new THREE.Color();
-      color.setHSL(0.6 + height * 0.1, 0.8, 0.5); // Blue-ish
-      meshRef.current!.setColorAt(i, color);
+      if (instanceColor) {
+        color.setHSL(0.6 + height * 0.1, 0.8, 0.5);
+        instanceColor.setXYZ(i, color.r, color.g, color.b);
+      }
     });
 
-    meshRef.current.instanceMatrix.needsUpdate = true;
-    if (meshRef.current.instanceColor)
-      meshRef.current.instanceColor.needsUpdate = true;
+    instanceMatrix.needsUpdate = true;
+    if (instanceColor) instanceColor.needsUpdate = true;
   });
 
   return (
     <instancedMesh
       ref={meshRef}
       args={[undefined, undefined, positions.length]}
+      castShadow
+      receiveShadow
     >
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial

@@ -1,7 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
+"use client";
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
@@ -22,6 +19,10 @@ import {
   AlertTriangle,
   Focus,
 } from "lucide-react";
+import cn from "classnames";
+
+const MemoizedGameScene = React.memo(GameScene);
+const MemoizedWebcamPreview = React.memo(WebcamPreview);
 
 const App: React.FC = () => {
   const [gameStatus, setGameStatus] = useState<GameStatus>(GameStatus.LOADING);
@@ -30,8 +31,8 @@ const App: React.FC = () => {
   const [multiplier, setMultiplier] = useState(1);
   const [health, setHealth] = useState(100);
   const [analyzing, setAnalyzing] = useState(false);
+  const [restartSignal, setRestartSignal] = useState(0);
 
-  // Custom Song State
   const [songUrl, setSongUrl] = useState<string>(SONG_URL);
   const [currentChart, setCurrentChart] = useState<NoteData[]>([]);
   const [isCustomSong, setIsCustomSong] = useState(false);
@@ -41,15 +42,10 @@ const App: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const flashRef = useRef<HTMLDivElement>(null);
 
-  const {
-    isCameraReady,
-    handPositionsRef,
-    lastResultsRef,
-    error: cameraError,
-    detectedGesture,
-  } = useMediaPipe(videoRef);
+  const { isCameraReady, handPositionsRef, lastResultsRef, detectedGesture } =
+    useMediaPipe(videoRef);
 
-  // Initial Analysis
+  // Initial Audio Analysis
   useEffect(() => {
     const initAudio = async () => {
       setAnalyzing(true);
@@ -58,11 +54,10 @@ const App: React.FC = () => {
       setAnalyzing(false);
       setGameStatus(GameStatus.IDLE);
     };
-    if (gameStatus === GameStatus.LOADING) {
-      initAudio();
-    }
+    initAudio();
   }, []);
 
+  // Update audio src on song change
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.src = songUrl;
@@ -70,10 +65,9 @@ const App: React.FC = () => {
     }
   }, [songUrl]);
 
-  // Handle Middle Finger
+  // Gesture overlay
   useEffect(() => {
     if (detectedGesture === "MIDDLE_FINGER" && flashRef.current) {
-      // Show a funny message or giant emoji
       const el = document.getElementById("gesture-overlay");
       if (el) {
         el.style.opacity = "1";
@@ -86,33 +80,26 @@ const App: React.FC = () => {
     }
   }, [detectedGesture]);
 
-  const triggerFlash = (color: string) => {
-    if (flashRef.current) {
-      flashRef.current.style.backgroundImage = `radial-gradient(circle at center, transparent 40%, ${color} 100%)`;
-      flashRef.current.style.opacity = "0.6";
-      setTimeout(() => {
-        if (flashRef.current) flashRef.current.style.opacity = "0";
-      }, 150);
-    }
+  const flashScreen = (color: string, opacity = 0.6, duration = 150) => {
+    if (!flashRef.current) return;
+    flashRef.current.style.backgroundImage = `radial-gradient(circle at center, transparent 40%, ${color} 100%)`;
+    flashRef.current.style.opacity = `${opacity}`;
+    setTimeout(() => {
+      if (flashRef.current) flashRef.current.style.opacity = "0";
+    }, duration);
   };
 
   const handleNoteHit = useCallback(
     (note: NoteData, goodCut: boolean) => {
-      let points = 100;
-      if (goodCut) points += 50;
-
-      triggerFlash(note.type === "left" ? COLORS.left : COLORS.right);
-
-      if (navigator.vibrate) {
-        navigator.vibrate(goodCut ? 40 : 20);
-      }
+      const points = goodCut ? 150 : 100;
+      flashScreen(note.type === "left" ? COLORS.left : COLORS.right);
+      if (navigator.vibrate) navigator.vibrate(goodCut ? 40 : 20);
 
       setCombo((c) => {
         const newCombo = c + 1;
-        if (newCombo > 30) setMultiplier(8);
-        else if (newCombo > 20) setMultiplier(4);
-        else if (newCombo > 10) setMultiplier(2);
-        else setMultiplier(1);
+        setMultiplier(
+          newCombo > 30 ? 8 : newCombo > 20 ? 4 : newCombo > 10 ? 2 : 1
+        );
         return newCombo;
       });
 
@@ -125,14 +112,7 @@ const App: React.FC = () => {
   const handleNoteMiss = useCallback((note: NoteData) => {
     setCombo(0);
     setMultiplier(1);
-
-    if (flashRef.current) {
-      flashRef.current.style.backgroundImage = `radial-gradient(circle at center, transparent 20%, #ff0000 100%)`;
-      flashRef.current.style.opacity = "0.8";
-      setTimeout(() => {
-        if (flashRef.current) flashRef.current.style.opacity = "0";
-      }, 300);
-    }
+    flashScreen("#ff0000", 0.8, 300);
 
     setHealth((h) => {
       const newHealth = h - 15;
@@ -144,25 +124,40 @@ const App: React.FC = () => {
     });
   }, []);
 
+  const restartGame = () => {
+    setRestartSignal((prev) => prev + 1); // GameScene içindeki useEffect tetiklenir
+    setScore(0);
+    setCombo(0);
+    setMultiplier(1);
+    setHealth(100);
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+
+    setGameStatus(GameStatus.IDLE);
+  };
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setAnalyzing(true);
-    setGameStatus(GameStatus.LOADING); // Show loading UI
-
     const objectUrl = URL.createObjectURL(file);
     setSongUrl(objectUrl);
     setIsCustomSong(true);
 
-    // Analyze new file
+    setAnalyzing(true);
+    setGameStatus(GameStatus.LOADING);
+
     const notes = await analyzeAudioAndGenerateChart(objectUrl);
     setCurrentChart(notes);
 
     setAnalyzing(false);
     setGameStatus(GameStatus.IDLE);
+
+    return () => URL.revokeObjectURL(objectUrl);
   };
 
   const startGame = async () => {
@@ -192,14 +187,12 @@ const App: React.FC = () => {
 
   const endGame = (victory: boolean) => {
     setGameStatus(victory ? GameStatus.VICTORY : GameStatus.GAME_OVER);
-    if (audioRef.current) {
-      audioRef.current.pause();
-    }
+    if (audioRef.current) audioRef.current.pause();
   };
 
   return (
     <div className="relative w-full h-screen bg-[#050510] overflow-hidden font-sans select-none">
-      {/* Gesture Easter Egg Overlay */}
+      {/* Gesture Overlay */}
       <div
         id="gesture-overlay"
         className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center transition-all duration-300 opacity-0 transform scale-50"
@@ -238,7 +231,7 @@ const App: React.FC = () => {
 
       <Canvas shadows dpr={[1, 2]}>
         {gameStatus !== GameStatus.LOADING && (
-          <GameScene
+          <MemoizedGameScene
             gameStatus={gameStatus}
             audioRef={audioRef}
             handPositionsRef={handPositionsRef}
@@ -247,19 +240,20 @@ const App: React.FC = () => {
             onNoteMiss={handleNoteMiss}
             onSongEnd={() => endGame(true)}
             multiplier={multiplier}
+            restartSignal={restartSignal}
           />
         )}
       </Canvas>
 
-      <WebcamPreview
+      <MemoizedWebcamPreview
         videoRef={videoRef}
         resultsRef={lastResultsRef}
         isCameraReady={isCameraReady}
       />
 
-      {/* Modern UI Layer */}
+      {/* UI Layer */}
       <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-6 z-30">
-        {/* HUD Top Bar */}
+        {/* Top HUD */}
         <div className="flex justify-between items-start w-full">
           {/* Health Bar */}
           <div className="w-64 backdrop-blur-md bg-black/40 p-3 rounded-xl border border-white/10 shadow-lg">
@@ -269,7 +263,14 @@ const App: React.FC = () => {
             </div>
             <div className="h-3 bg-gray-800 rounded-full overflow-hidden">
               <div
-                className={`h-full transition-all duration-300 ease-out shadow-[0_0_10px_currentColor] ${health > 50 ? "bg-gradient-to-r from-green-500 to-green-300 text-green-400" : health > 20 ? "bg-gradient-to-r from-yellow-500 to-yellow-300 text-yellow-400" : "bg-gradient-to-r from-red-600 to-red-500 text-red-500 animate-pulse"}`}
+                className={cn(
+                  "h-full transition-all duration-300 ease-out shadow-[0_0_10px_currentColor]",
+                  health > 50
+                    ? "bg-gradient-to-r from-green-500 to-green-300"
+                    : health > 20
+                      ? "bg-gradient-to-r from-yellow-500 to-yellow-300"
+                      : "bg-gradient-to-r from-red-600 to-red-500 animate-pulse"
+                )}
                 style={{ width: `${health}%` }}
               />
             </div>
@@ -280,15 +281,16 @@ const App: React.FC = () => {
             <div className="text-5xl pr-4 font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-blue-400 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]">
               {score.toLocaleString()}
             </div>
-
             <div
-              className={`mt-2 transition-transform duration-100 ${combo > 0 ? "scale-100 opacity-100" : "scale-50 opacity-0"}`}
+              className={cn(
+                "mt-2 transition-transform duration-100",
+                combo > 0 ? "scale-100 opacity-100" : "scale-50 opacity-0"
+              )}
             >
               <div className="text-3xl font-bold text-blue-300 drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]">
                 {combo}x
               </div>
             </div>
-
             {multiplier > 1 && (
               <div className="mt-1 px-4 py-1 bg-blue-600/20 border border-blue-400/50 rounded-full text-blue-300 text-xs font-bold uppercase tracking-widest animate-pulse">
                 Multiplier {multiplier}x
@@ -311,6 +313,8 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Bottom Logos */}
         <div className="flex gap-3 top-0">
           <a
             href="https://carpediem.hr"
@@ -318,10 +322,15 @@ const App: React.FC = () => {
             rel="noopener noreferrer"
             className="flex items-center"
           >
-            <img src="/assets/logo_white.png" className="w-[100px]" />
+            <img
+              src="/logo_white.png"
+              alt="Carpe Diem Logo"
+              className="w-[100px]"
+            />
           </a>
           <img
-            src="/assets/karlovacka.png"
+            src="/karlovacka.png"
+            alt="Karlovačka"
             className="w-[100px] bg-white/80 backdrop-blur-lg p-2 rounded"
           />
           <a
@@ -330,11 +339,17 @@ const App: React.FC = () => {
             rel="noopener noreferrer"
             className="flex items-center"
           >
-            <img src="/assets/logo_embed.png" className="w-[80px] srounded" />
+            <img
+              src="/logo_embed.png"
+              alt="Ayberk Yavaş"
+              className="w-[80px] rounded"
+            />
           </a>
         </div>
+
         {/* Menus */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
+          {/* Loading / Analyzing */}
           {(gameStatus === GameStatus.LOADING || analyzing) && (
             <div className="bg-black/80 backdrop-blur-xl p-12 rounded-3xl border border-blue-500/20 flex flex-col items-center shadow-2xl">
               <div className="relative w-24 h-24 mb-6">
@@ -350,6 +365,7 @@ const App: React.FC = () => {
             </div>
           )}
 
+          {/* Idle / Start Menu */}
           {gameStatus === GameStatus.IDLE && !analyzing && (
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
@@ -359,7 +375,6 @@ const App: React.FC = () => {
                     <Focus className="w-16 h-16 text-blue-400 filter drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]" />
                   </div>
                 </div>
-
                 <h1 className="text-6xl font-black text-white mb-2 tracking-tighter italic">
                   TEMPO{" "}
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
@@ -406,7 +421,6 @@ const App: React.FC = () => {
                     >
                       <Play fill="currentColor" /> INITIATE SEQUENCE
                     </button>
-
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className="w-full bg-transparent hover:bg-white/5 text-gray-300 text-lg font-semibold py-4 px-8 rounded-xl transition-all flex items-center justify-center gap-3 border border-white/20 hover:border-white/40"
@@ -422,6 +436,7 @@ const App: React.FC = () => {
             </div>
           )}
 
+          {/* Victory / Game Over */}
           {(gameStatus === GameStatus.GAME_OVER ||
             gameStatus === GameStatus.VICTORY) && (
             <div className="bg-black/90 p-14 rounded-3xl text-center border border-white/10 backdrop-blur-2xl shadow-[0_0_100px_rgba(0,0,0,1)]">
@@ -438,7 +453,12 @@ const App: React.FC = () => {
               </div>
 
               <h2
-                className={`text-6xl font-black mb-2 tracking-tighter ${gameStatus === GameStatus.VICTORY ? "text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600" : "text-red-500"}`}
+                className={cn(
+                  "text-6xl font-black mb-2 tracking-tighter",
+                  gameStatus === GameStatus.VICTORY
+                    ? "text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600"
+                    : "text-red-500"
+                )}
               >
                 {gameStatus === GameStatus.VICTORY
                   ? "MISSION COMPLETE"
@@ -448,8 +468,8 @@ const App: React.FC = () => {
               <div className="my-8 py-8 border-t border-b border-white/10">
                 <p className="text-gray-100 text-sm uppercase tracking-widest mb-2 max-w-lg">
                   {gameStatus === GameStatus.VICTORY
-                    ? "„Ha! Pogledajte tko je uspio doći ovako daleko – stvarno ste nas iznenadili! Ali dobro, moramo priznati… uspješno ste riješili igru! Čestitamo… ili barem pokušaj čestitke. Ako želite pronaći listu dobrih i zločestih, morat ćete se potruditi još malo. Poklon koji krije trag možete rastaviti – šerafi, vijci, dijelovi… sve to stoji između vas i našeg malog blaga. Ne očekujte da će biti lako, Djed Mraz nas nikad ne shvaća ozbiljno, a ni mi vas. Pa, pokažite svoje vještine – ho, ho… ha!“"
-                    : "„Ha, ha! Misliš da si nas prestigao? Nema šanse! Ako stvarno želiš doći do liste, moraš nastaviti dalje… poklon čeka, ali samo za one koji se potrude. Ho, ho… ha!“"}
+                    ? "„Ha! Pogledajte tko je uspio doći ovako daleko – stvarno ste nas iznenadili! Uspješno ste riješili igru!…“"
+                    : "„Ha, ha! Misliš da si nas prestigao? Moraš nastaviti dalje…“"}
                 </p>
 
                 <div className="flex flex-col items-center mt-8">
@@ -463,10 +483,10 @@ const App: React.FC = () => {
               </div>
 
               <button
-                onClick={() => setGameStatus(GameStatus.IDLE)}
-                className="bg-white hover:bg-gray-200 text-black text-xl font-bold py-4 px-10 rounded-full flex items-center justify-center mx-auto gap-3 transition-colors shadow-lg hover:shadow-white/20"
+                onClick={restartGame}
+                className="bg-white hover:bg-gray-200 text-black text-xl font-bold py-4 px-12 rounded-xl transition-all mt-6"
               >
-                <RefreshCw /> RESTART SYSTEM
+                RESTART SEQUENCE
               </button>
             </div>
           )}

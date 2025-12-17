@@ -1,6 +1,6 @@
 import { NoteData, CutDirection, HandType } from "../types";
 
-const MIN_NOTE_GAP = 0.12;
+const MIN_NOTE_GAP = 0.1;
 
 export const analyzeAudioAndGenerateChart = async (
   audioUrl: string

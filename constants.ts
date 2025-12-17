@@ -29,9 +29,8 @@ export const LAYER_Y_POSITIONS = [0.8, 1.6, 2.4]; // Low, Mid, High
 
 // Audio - Visual Pulse Only
 // Using a reliable CORS-friendly URL from Three.js examples
-export const SONG_URL =
-  "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/sounds/376737_Skullbeatz___Bad_Cat_Maste.mp3";
-export const VISUAL_BPM = 128; // Used solely for environment pulsing
+export const SONG_URL = "/music/song.mp3"; // Replace with your own song URL if needed
+export const VISUAL_BPM = 128;
 export const BEAT_TIME = 60 / VISUAL_BPM;
 
 export const DIRECTION_VECTORS: Record<CutDirection, THREE.Vector3> = {

@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 assets
+pnpm-lock.yaml
+yarn.lock
+package-lock.json

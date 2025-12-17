@@ -20,6 +20,8 @@ import {
   Focus,
 } from "lucide-react";
 import cn from "classnames";
+import useIsMobile from "./hooks/useIsMobile";
+import Snowfall from "react-snowfall";
 
 const MemoizedGameScene = React.memo(GameScene);
 const MemoizedWebcamPreview = React.memo(WebcamPreview);
@@ -41,6 +43,8 @@ const App: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement>(new Audio(SONG_URL));
   const videoRef = useRef<HTMLVideoElement>(null);
   const flashRef = useRef<HTMLDivElement>(null);
+
+  const { isMobile, isLoading } = useIsMobile();
 
   const { isCameraReady, handPositionsRef, lastResultsRef, detectedGesture } =
     useMediaPipe(videoRef);
@@ -190,6 +194,27 @@ const App: React.FC = () => {
     if (audioRef.current) audioRef.current.pause();
   };
 
+  if (isMobile) {
+    return (
+      <div className="flex items-center justify-center w-full h-screen bg-[#050510] text-white p-6 text-center">
+        <div>
+          <h1 className="text-4xl font-black text-white mb-2 tracking-tighter italic mb-8">
+            TEMPO{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+              STRIKE
+            </span>
+          </h1>
+          <h1 className="text-2xl font-bold mb-4">Unsupported Device</h1>
+          <p className="text-base">
+            Tempo Strike requires a desktop or laptop computer for optimal
+            performance. Please access the game on a device with a larger screen
+            and better processing capabilities.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-full h-screen bg-[#050510] overflow-hidden font-sans select-none">
       {/* Gesture Overlay */}
@@ -253,6 +278,7 @@ const App: React.FC = () => {
 
       {/* UI Layer */}
       <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-6 z-30">
+        <Snowfall />
         {/* Top HUD */}
         <div className="flex justify-between items-start w-full">
           {/* Health Bar */}
@@ -350,7 +376,7 @@ const App: React.FC = () => {
         {/* Menus */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
           {/* Loading / Analyzing */}
-          {(gameStatus === GameStatus.LOADING || analyzing) && (
+          {(gameStatus === GameStatus.LOADING || analyzing) && !isMobile && (
             <div className="bg-black/80 backdrop-blur-xl p-12 rounded-3xl border border-blue-500/20 flex flex-col items-center shadow-2xl">
               <div className="relative w-24 h-24 mb-6">
                 <div className="absolute inset-0 border-t-4 border-blue-500 rounded-full animate-spin"></div>
@@ -366,7 +392,7 @@ const App: React.FC = () => {
           )}
 
           {/* Idle / Start Menu */}
-          {gameStatus === GameStatus.IDLE && !analyzing && (
+          {gameStatus === GameStatus.IDLE && !analyzing && !isMobile && (
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
               <div className="relative bg-black/80 p-12 rounded-3xl text-center border border-white/10 backdrop-blur-2xl max-w-lg shadow-2xl">

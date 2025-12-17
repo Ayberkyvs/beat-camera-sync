@@ -46,16 +46,21 @@ const BeatEqualizer: React.FC<BeatEqualizerProps> = ({ audioRef }) => {
       dummy.position.set(p.x, height / 2, p.z);
       dummy.scale.set(0.5, height, 0.5);
       dummy.updateMatrix();
-      instanceMatrix.set(i, dummy.matrix);
 
-      if (instanceColor) {
+      // eski: instanceMatrix.set(i, dummy.matrix);
+      meshRef.current!.setMatrixAt(i, dummy.matrix);
+
+      if (meshRef.current!.instanceColor) {
         color.setHSL(0.6 + height * 0.1, 0.8, 0.5);
-        instanceColor.setXYZ(i, color.r, color.g, color.b);
+        // eski: instanceColor.setXYZ(i, color.r, color.g, color.b);
+        meshRef.current!.setColorAt(i, color);
       }
     });
 
-    instanceMatrix.needsUpdate = true;
-    if (instanceColor) instanceColor.needsUpdate = true;
+    // Matris ve renk güncellemesi
+    meshRef.current!.instanceMatrix.needsUpdate = true;
+    if (meshRef.current!.instanceColor)
+      meshRef.current!.instanceColor.needsUpdate = true;
   });
 
   return (

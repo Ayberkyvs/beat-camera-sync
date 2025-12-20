@@ -31,7 +31,7 @@ const App: React.FC = () => {
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
   const [multiplier, setMultiplier] = useState(1);
-  const [health, setHealth] = useState(100);
+  const [health, setHealth] = useState(1000);
   const [analyzing, setAnalyzing] = useState(false);
   const [restartSignal, setRestartSignal] = useState(0);
 

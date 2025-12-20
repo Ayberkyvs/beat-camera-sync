@@ -494,20 +494,8 @@ const App: React.FC = () => {
               <div className="my-8 py-8 border-t border-b border-white/10">
                 <p className="text-gray-100 text-sm uppercase tracking-widest mb-2 max-w-lg">
                   {gameStatus === GameStatus.VICTORY
-                    ? "„Ha! Pogledajte tko je uspio doći ovako daleko – stvarno ste nas iznenadili!
-Ali dobro, moramo priznati… uspješno ste riješili igru!
-Čestitamo… ili barem pokušaj čestitke.
-
-Ako želite pronaći listu dobrih i zločestih,
-morat ćete se potruditi još malo. Poklon koji krije trag možete rastaviti –
-šerafi, vijci, dijelovi… sve to stoji između vas i našeg malog blaga.
-
-Ne očekujte da će biti lako, Djed Mraz nas nikad ne shvaća ozbiljno,
-a ni mi vas. Pa, pokažite svoje vještine – ho, ho… ha!“"
-                    : "„Ha, ha! Misliš da si nas prestigao? Nema šanse!
-Ako stvarno želiš doći do liste, moraš nastaviti dalje…
-poklon čeka, ali samo za one koji se potrude. Ho, ho… ha!“"}
-                </p>
+                    ? "„Ha! Pogledajte tko je uspio doći ovako daleko – stvarno ste nas iznenadili! Ali dobro, moramo priznati uspješno ste riješili igru! Čestitamo… ili barem pokušaj čestitke. Ako želite pronaći listu dobrih i zločestih,morat ćete se potruditi još malo. Poklon koji krije trag možete rastaviti – šerafi, vijci, dijelovi sve to stoji između vas i našeg malog blaga. Ne očekujte da će biti lako, Djed Mraz nas nikad ne shvaća ozbiljno,a ni mi vas. Pa, pokažite svoje vještine – ho, ho… ha!“"
+                    : "„Ha, ha! Misliš da si nas prestigao? Nema šanse! Ako stvarno želiš doći do liste, moraš nastaviti dalje… poklon čeka, ali samo za one koji se potrude. Ho,ho… ha!“"}</p>
 
                 <div className="flex flex-col items-center mt-8">
                   <p className="text-gray-400 text-sm uppercase tracking-widest">

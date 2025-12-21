@@ -30,7 +30,7 @@ const App: React.FC = () => {
   const [gameStatus, setGameStatus] = useState<GameStatus>(GameStatus.LOADING);
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
-  const [multiplier, setMultiplier] = useState(1);
+  const [multiplier, setMultiplier] = useState(2);
   const [health, setHealth] = useState(1000);
   const [analyzing, setAnalyzing] = useState(false);
   const [restartSignal, setRestartSignal] = useState(0);
@@ -132,7 +132,7 @@ const App: React.FC = () => {
     setRestartSignal((prev) => prev + 1); // GameScene içindeki useEffect tetiklenir
     setScore(0);
     setCombo(0);
-    setMultiplier(1);
+    setMultiplier(2);
     setHealth(1000);
 
     if (audioRef.current) {
@@ -169,7 +169,7 @@ const App: React.FC = () => {
 
     setScore(0);
     setCombo(0);
-    setMultiplier(1);
+    setMultiplier(2);
     setHealth(1000);
 
     currentChart.forEach((n) => {
